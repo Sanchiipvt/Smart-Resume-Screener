@@ -65,6 +65,18 @@ def extract_skills(tokens, skill_set):
     
     return found_skills
 
+def match_skills(resume_skills, job_skills):
+    matched = resume_skills.intersection(job_skills)
+    missing = job_skills.difference(resume_skills)
+    
+    if len(job_skills) == 0:
+        score = 0
+    else:
+        score = (len(matched) / len(job_skills)) * 100
+    
+    return round(score, 2), matched, missing
+
+
 def remove_stopwords(tokens):
     return [word for word in tokens if word not in STOPWORDS]
 
@@ -73,6 +85,10 @@ filtered_job = remove_stopwords(job_tokens)
 
 resume_skills = extract_skills(filtered_resume, SKILLS)
 job_skills = extract_skills(filtered_job, SKILLS)
+
+match_score, matched_skills, missing_skills = match_skills(
+    resume_skills, job_skills
+)
 
 print("===== CLEANED RESUME =====")
 print(clean_resume)
@@ -91,3 +107,12 @@ print(resume_skills)
 
 print("\n===== JOB REQUIRED SKILLS =====")
 print(job_skills)
+
+print("\n===== MATCH RESULTS =====")
+print(f"Match Score: {match_score}%")
+
+print("\nMatched Skills:")
+print(matched_skills)
+
+print("\nMissing Skills:")
+print(missing_skills)
