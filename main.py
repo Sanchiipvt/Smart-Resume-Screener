@@ -35,11 +35,44 @@ STOPWORDS = {
     "to", "of", "in", "on", "at", "by", "from"
 }
 
+SKILLS = {
+    "python",
+    "java",
+    "sql",
+    "machine learning",
+    "deep learning",
+    "data analysis",
+    "data visualization",
+    "nlp",
+    "tensorflow",
+    "pandas",
+    "numpy"
+}
+
+def extract_skills(tokens, skill_set):
+    found_skills = set()
+    
+    # single-word skills
+    for word in tokens:
+        if word in skill_set:
+            found_skills.add(word)
+    
+    # two-word skills
+    for i in range(len(tokens) - 1):
+        two_word = tokens[i] + " " + tokens[i + 1]
+        if two_word in skill_set:
+            found_skills.add(two_word)
+    
+    return found_skills
+
 def remove_stopwords(tokens):
     return [word for word in tokens if word not in STOPWORDS]
 
 filtered_resume = remove_stopwords(resume_tokens)
 filtered_job = remove_stopwords(job_tokens)
+
+resume_skills = extract_skills(filtered_resume, SKILLS)
+job_skills = extract_skills(filtered_job, SKILLS)
 
 print("===== CLEANED RESUME =====")
 print(clean_resume)
@@ -53,3 +86,8 @@ print(filtered_resume)
 print("\n===== TOKENIZED & CLEANED JOB DESCRIPTION =====")
 print(filtered_job)
 
+print("\n===== RESUME SKILLS =====")
+print(resume_skills)
+
+print("\n===== JOB REQUIRED SKILLS =====")
+print(job_skills)
