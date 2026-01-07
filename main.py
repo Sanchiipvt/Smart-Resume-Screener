@@ -24,8 +24,32 @@ def clean_text(text):
 clean_resume = clean_text(resume_text)
 clean_job = clean_text(job_text)
 
+def tokenize(text):
+    return text.split(" ")
+
+resume_tokens = tokenize(clean_resume)
+job_tokens = tokenize(clean_job)
+
+STOPWORDS = {
+    "the", "is", "and", "with", "for", "a", "an",
+    "to", "of", "in", "on", "at", "by", "from"
+}
+
+def remove_stopwords(tokens):
+    return [word for word in tokens if word not in STOPWORDS]
+
+filtered_resume = remove_stopwords(resume_tokens)
+filtered_job = remove_stopwords(job_tokens)
+
 print("===== CLEANED RESUME =====")
 print(clean_resume)
 
 print("\n===== CLEANED JOB DESCRIPTION =====")
 print(clean_job)
+
+print("\n===== TOKENIZED & CLEANED RESUME =====")
+print(filtered_resume)
+
+print("\n===== TOKENIZED & CLEANED JOB DESCRIPTION =====")
+print(filtered_job)
+
