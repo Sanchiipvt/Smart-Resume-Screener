@@ -58,17 +58,33 @@ SKILLS = {
     "numpy"
 }
 
+SKILL_ALIASES = {
+    "machine learning": {"ml", "machine-learning"},
+    "deep learning": {"dl", "deep-learning"},
+    "data analysis": {"data-analysis", "analytics"},
+    "python": {"py"},
+    "natural language processing": {"nlp"}
+}
+
+def normalize_skill(skill):
+    for main_skill, aliases in SKILL_ALIASES.items():
+        if skill == main_skill or skill in aliases:
+            return main_skill
+    return skill
+
 def extract_skills(tokens, skill_set):
     found_skills = set()
 
     for word in tokens:
-        if word in skill_set:
-            found_skills.add(word)
+        normalized = normalize_skill(word)
+        if normalized in skill_set:
+            found_skills.add(normalized)
 
     for i in range(len(tokens) - 1):
         two_word = tokens[i] + " " + tokens[i + 1]
-        if two_word in skill_set:
-            found_skills.add(two_word)
+        normalized = normalize_skill(two_word)
+        if normalized in skill_set:
+            found_skills.add(normalized)
 
     return found_skills
 
@@ -116,3 +132,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
