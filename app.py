@@ -6,6 +6,7 @@ from main import (
     match_skills,
     tfidf_similarity,
     final_ats_score,
+    generate_skill_suggestions,
     SKILLS
 )
 
@@ -23,21 +24,33 @@ uploaded_resume = st.file_uploader(
 )
 
 st.subheader("🧾 Job Description")
-job_text = st.text_area("Paste Job Description", height=200)
+uploaded_jd = st.file_uploader(
+    "Upload Job Description (PDF or DOCX)",
+    type=["pdf", "docx"]
+)
+
+job_text_input = st.text_area(
+    "Or paste Job Description text",
+    height=200
+)
 
 # ---------------- BUTTON ACTION ----------------
 if st.button("🔍 Screen Resume"):
 
-    # Validation
     if not uploaded_resume:
         st.warning("Please upload a resume.")
         st.stop()
 
+    # Decide JD source
+    if uploaded_jd:
+        job_text = extract_text_from_file(uploaded_jd)
+    else:
+        job_text = job_text_input
+
     if not job_text.strip():
-        st.warning("Please paste a job description.")
+        st.warning("Please upload or paste a job description.")
         st.stop()
 
-    # Extract resume text
     resume_text = extract_text_from_file(uploaded_resume)
 
     if not resume_text.strip():
@@ -66,13 +79,19 @@ if st.button("🔍 Screen Resume"):
     st.metric("⭐ Final ATS Score", f"{final_score}%")
 
     st.subheader("✅ Matched Skills")
-    if matched:
-        st.write(", ".join(sorted(matched)))
-    else:
-        st.write("None")
+    st.write(", ".join(sorted(matched)) if matched else "None")
 
     st.subheader("❌ Missing Skills")
-    if missing:
-        st.write(", ".join(sorted(missing)))
+    st.write(", ".join(sorted(missing)) if missing else "None")
+
+    # ---------------- SUGGESTIONS ----------------
+    st.subheader("💡 Suggested Improvements")
+    suggestions = generate_skill_suggestions(missing)
+
+    if suggestions:
+        for s in suggestions:
+            st.write(f"• {s}")
     else:
-        st.write("None")
+        st.write("Your resume already matches the job requirements well.")
+
+
