@@ -5,32 +5,36 @@ import os
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import pdfplumber
+from docx import Document
 
 
 # =========================
-# PATH CONFIGURATION
+# FILE TEXT EXTRACTION
 # =========================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESUME_PATH = os.path.join(BASE_DIR, "data", "resume.txt")
-JOB_PATH = os.path.join(BASE_DIR, "data", "job_description.txt")
-
-
-# =========================
-# FILE HANDLING
-# =========================
-def load_text(file_path):
+def extract_text_from_file(uploaded_file):
     """
-    Safely load text from a file.
+    Extract text from PDF or DOCX file.
     """
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            text = f.read().strip()
-            if not text:
-                print(f"⚠️ Warning: {file_path} is empty.")
-            return text
-    except FileNotFoundError:
-        print(f"❌ Error: {file_path} not found.")
+    if uploaded_file is None:
         return ""
+
+    file_name = uploaded_file.name.lower()
+
+    if file_name.endswith(".pdf"):
+        text = ""
+        with pdfplumber.open(uploaded_file) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + " "
+        return text.strip()
+
+    elif file_name.endswith(".docx"):
+        doc = Document(uploaded_file)
+        return " ".join([para.text for para in doc.paragraphs])
+
+    return ""
 
 
 # =========================
@@ -42,33 +46,20 @@ STOPWORDS = {
 }
 
 def clean_text(text):
-    """
-    Normalize text by lowercasing and removing punctuation.
-    """
     text = text.lower()
     text = re.sub(r"[^a-z\s]", "", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-def tokenize(text):
-    return text.split()
-
-def remove_stopwords(tokens):
-    return [word for word in tokens if word not in STOPWORDS]
-
 def preprocess_text(text):
-    """
-    Full preprocessing pipeline.
-    """
     if not text:
         return []
-    cleaned = clean_text(text)
-    tokens = tokenize(cleaned)
-    return remove_stopwords(tokens)
+    tokens = clean_text(text).split()
+    return [t for t in tokens if t not in STOPWORDS]
 
 
 # =========================
-# SKILL EXTRACTION LOGIC
+# SKILLS & SUGGESTIONS
 # =========================
 SKILLS = {
     "python",
@@ -92,40 +83,47 @@ SKILL_ALIASES = {
     "nlp": {"natural language processing"}
 }
 
+SKILL_SUGGESTIONS = {
+    "python": "Add Python projects demonstrating data handling or automation.",
+    "java": "Include object-oriented or backend development projects.",
+    "sql": "Show experience with joins, subqueries, and database design.",
+    "machine learning": "Add ML projects with model training and evaluation.",
+    "deep learning": "Include neural network or deep learning implementations.",
+    "data analysis": "Show data cleaning, analysis, and insight generation.",
+    "data visualization": "Add dashboards or charts using Matplotlib or Seaborn.",
+    "nlp": "Mention NLP tasks like text classification or sentiment analysis.",
+    "tensorflow": "Include hands-on TensorFlow model implementations.",
+    "pandas": "Show data manipulation using Pandas.",
+    "numpy": "Mention numerical computing or matrix-based work."
+}
+
+
+# =========================
+# SKILL LOGIC
+# =========================
 def normalize_skill(skill):
-    """
-    Convert aliases to canonical skill names.
-    """
     for main_skill, aliases in SKILL_ALIASES.items():
         if skill == main_skill or skill in aliases:
             return main_skill
     return skill
 
 def extract_skills(tokens, skill_set):
-    """
-    Extract single-word and multi-word skills.
-    """
-    found_skills = set()
+    found = set()
 
-    # Single-word skills
     for word in tokens:
-        normalized = normalize_skill(word)
-        if normalized in skill_set:
-            found_skills.add(normalized)
+        norm = normalize_skill(word)
+        if norm in skill_set:
+            found.add(norm)
 
-    # Two-word skills
     for i in range(len(tokens) - 1):
         phrase = tokens[i] + " " + tokens[i + 1]
-        normalized = normalize_skill(phrase)
-        if normalized in skill_set:
-            found_skills.add(normalized)
+        norm = normalize_skill(phrase)
+        if norm in skill_set:
+            found.add(norm)
 
-    return found_skills
+    return found
 
 def match_skills(resume_skills, job_skills):
-    """
-    Compare resume skills against job skills.
-    """
     if not job_skills:
         return 0, set(), set()
 
@@ -137,85 +135,39 @@ def match_skills(resume_skills, job_skills):
 
 
 # =========================
-# ML-BASED SCORING
+# ML SCORING
 # =========================
 def tfidf_similarity(resume_text, job_text):
-    """
-    Compute semantic similarity using TF-IDF + cosine similarity.
-    """
     if not resume_text or not job_text:
         return 0.0
 
-    vectorizer = TfidfVectorizer(
-        stop_words="english",
-        ngram_range=(1, 2)
-    )
-
+    vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
     vectors = vectorizer.fit_transform([
         clean_text(resume_text),
         clean_text(job_text)
     ])
 
-    similarity = cosine_similarity(vectors[0], vectors[1])[0][0]
-    return round(similarity * 100, 2)
+    return round(cosine_similarity(vectors[0], vectors[1])[0][0] * 100, 2)
 
 
 # =========================
-# FINAL ATS SCORING
+# FINAL SCORE
 # =========================
 def final_ats_score(skill_score, tfidf_score, skill_weight=0.7):
-    """
-    Weighted final ATS score.
-    """
-    tfidf_weight = 1 - skill_weight
-    final_score = (skill_score * skill_weight) + (tfidf_score * tfidf_weight)
-    return round(final_score, 2)
-
-
-# =========================
-# MAIN EXECUTION
-# =========================
-def main():
-    resume_text = load_text(RESUME_PATH)
-    job_text = load_text(JOB_PATH)
-
-    # ML similarity score
-    tfidf_score = tfidf_similarity(resume_text, job_text)
-
-    # Rule-based skill matching
-    resume_tokens = preprocess_text(resume_text)
-    job_tokens = preprocess_text(job_text)
-
-    resume_skills = extract_skills(resume_tokens, SKILLS)
-    job_skills = extract_skills(job_tokens, SKILLS)
-
-    skill_score, matched_skills, missing_skills = match_skills(
-        resume_skills, job_skills
+    return round(
+        skill_score * skill_weight + tfidf_score * (1 - skill_weight),
+        2
     )
 
-    # Final ATS score
-    final_score = final_ats_score(skill_score, tfidf_score)
 
-    # Output
-    print("\n===== ATS SCREENING RESULT =====")
-    print(f"Skill Match Score: {skill_score}%")
-    print(f"TF-IDF Similarity Score: {tfidf_score}%")
-    print(f"⭐ Final ATS Score: {final_score}%")
-
-    print("\nMatched Skills:")
-    if matched_skills:
-        for skill in sorted(matched_skills):
-            print(f"✔ {skill}")
-    else:
-        print("None")
-
-    print("\nMissing Skills:")
-    if missing_skills:
-        for skill in sorted(missing_skills):
-            print(f"✘ {skill}")
-    else:
-        print("None")
-
-
-if __name__ == "__main__":
-    main()
+# =========================
+# SUGGESTION ENGINE
+# =========================
+def generate_skill_suggestions(missing_skills):
+    return [
+        SKILL_SUGGESTIONS.get(
+            skill,
+            f"Consider adding experience related to {skill}."
+        )
+        for skill in missing_skills
+    ]
