@@ -1,13 +1,11 @@
 # =========================
 # IMPORTS
 # =========================
-import os
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 import pdfplumber
 from docx import Document
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # =========================
 # FILE TEXT EXTRACTION
@@ -19,9 +17,9 @@ def extract_text_from_file(uploaded_file):
     if uploaded_file is None:
         return ""
 
-    file_name = uploaded_file.name.lower()
+    filename = uploaded_file.name.lower()
 
-    if file_name.endswith(".pdf"):
+    if filename.endswith(".pdf"):
         text = ""
         with pdfplumber.open(uploaded_file) as pdf:
             for page in pdf.pages:
@@ -30,12 +28,11 @@ def extract_text_from_file(uploaded_file):
                     text += page_text + " "
         return text.strip()
 
-    elif file_name.endswith(".docx"):
+    elif filename.endswith(".docx"):
         doc = Document(uploaded_file)
-        return " ".join([para.text for para in doc.paragraphs])
+        return " ".join(p.text for p in doc.paragraphs)
 
     return ""
-
 
 # =========================
 # TEXT PREPROCESSING
@@ -57,9 +54,8 @@ def preprocess_text(text):
     tokens = clean_text(text).split()
     return [t for t in tokens if t not in STOPWORDS]
 
-
 # =========================
-# SKILLS & SUGGESTIONS
+# SKILLS, ALIASES & SUGGESTIONS
 # =========================
 SKILLS = {
     "python",
@@ -78,48 +74,48 @@ SKILLS = {
 SKILL_ALIASES = {
     "machine learning": {"ml", "machine-learning"},
     "deep learning": {"dl", "deep-learning"},
-    "data analysis": {"data-analysis", "analytics"},
+    "data analysis": {"analytics", "data-analysis"},
     "python": {"py"},
     "nlp": {"natural language processing"}
 }
 
 SKILL_SUGGESTIONS = {
-    "python": "Add Python projects demonstrating data handling or automation.",
+    "python": "Add Python projects demonstrating automation or data handling.",
     "java": "Include object-oriented or backend development projects.",
-    "sql": "Show experience with joins, subqueries, and database design.",
+    "sql": "Show complex queries, joins, and database schema design.",
     "machine learning": "Add ML projects with model training and evaluation.",
-    "deep learning": "Include neural network or deep learning implementations.",
-    "data analysis": "Show data cleaning, analysis, and insight generation.",
-    "data visualization": "Add dashboards or charts using Matplotlib or Seaborn.",
+    "deep learning": "Include neural networks or CNN/RNN implementations.",
+    "data analysis": "Show data cleaning, EDA, and insights generation.",
+    "data visualization": "Add dashboards using Matplotlib, Seaborn, or Power BI.",
     "nlp": "Mention NLP tasks like text classification or sentiment analysis.",
     "tensorflow": "Include hands-on TensorFlow model implementations.",
-    "pandas": "Show data manipulation using Pandas.",
-    "numpy": "Mention numerical computing or matrix-based work."
+    "pandas": "Show real-world data manipulation pipelines.",
+    "numpy": "Mention numerical computing or matrix-based operations."
 }
 
-
 # =========================
-# SKILL LOGIC
+# SKILL MATCHING LOGIC
 # =========================
 def normalize_skill(skill):
-    for main_skill, aliases in SKILL_ALIASES.items():
-        if skill == main_skill or skill in aliases:
-            return main_skill
+    for main, aliases in SKILL_ALIASES.items():
+        if skill == main or skill in aliases:
+            return main
     return skill
 
 def extract_skills(tokens, skill_set):
     found = set()
 
-    for word in tokens:
-        norm = normalize_skill(word)
+    # single-word
+    for token in tokens:
+        norm = normalize_skill(token)
         if norm in skill_set:
             found.add(norm)
 
+    # two-word
     for i in range(len(tokens) - 1):
-        phrase = tokens[i] + " " + tokens[i + 1]
-        norm = normalize_skill(phrase)
-        if norm in skill_set:
-            found.add(norm)
+        phrase = normalize_skill(tokens[i] + " " + tokens[i + 1])
+        if phrase in skill_set:
+            found.add(phrase)
 
     return found
 
@@ -133,36 +129,6 @@ def match_skills(resume_skills, job_skills):
 
     return score, matched, missing
 
-
-# =========================
-# ML SCORING
-# =========================
-def tfidf_similarity(resume_text, job_text):
-    if not resume_text or not job_text:
-        return 0.0
-
-    vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
-    vectors = vectorizer.fit_transform([
-        clean_text(resume_text),
-        clean_text(job_text)
-    ])
-
-    return round(cosine_similarity(vectors[0], vectors[1])[0][0] * 100, 2)
-
-
-# =========================
-# FINAL SCORE
-# =========================
-def final_ats_score(skill_score, tfidf_score, skill_weight=0.7):
-    return round(
-        skill_score * skill_weight + tfidf_score * (1 - skill_weight),
-        2
-    )
-
-
-# =========================
-# SUGGESTION ENGINE
-# =========================
 def generate_skill_suggestions(missing_skills):
     return [
         SKILL_SUGGESTIONS.get(
@@ -171,3 +137,33 @@ def generate_skill_suggestions(missing_skills):
         )
         for skill in missing_skills
     ]
+
+# =========================
+# ML-BASED SIMILARITY
+# =========================
+def tfidf_similarity(resume_text, job_text):
+    if not resume_text or not job_text:
+        return 0.0
+
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1, 2)
+    )
+
+    vectors = vectorizer.fit_transform([
+        clean_text(resume_text),
+        clean_text(job_text)
+    ])
+
+    similarity = cosine_similarity(vectors[0], vectors[1])[0][0]
+    return round(similarity * 100, 2)
+
+# =========================
+# FINAL ATS SCORE
+# =========================
+def final_ats_score(skill_score, tfidf_score, skill_weight=0.7):
+    return round(
+        (skill_score * skill_weight) +
+        (tfidf_score * (1 - skill_weight)),
+        2
+    )
