@@ -137,6 +137,32 @@ def generate_skill_suggestions(missing_skills):
         )
         for skill in missing_skills
     ]
+    
+def split_resume_sections(resume_text):
+    sections = {
+        "skills": "",
+        "experience": "",
+        "projects": "",
+        "education": ""
+    }
+
+    current_section = None
+    lines = resume_text.lower().split("\n")
+
+    for line in lines:
+        if "skill" in line:
+            current_section = "skills"
+        elif "experience" in line or "work" in line:
+            current_section = "experience"
+        elif "project" in line:
+            current_section = "projects"
+        elif "education" in line:
+            current_section = "education"
+
+        if current_section:
+            sections[current_section] += line + " "
+
+    return sections
 
 # =========================
 # ML-BASED SIMILARITY
@@ -167,3 +193,15 @@ def final_ats_score(skill_score, tfidf_score, skill_weight=0.7):
         (tfidf_score * (1 - skill_weight)),
         2
     )
+
+def section_wise_scores(resume_sections, job_text):
+    scores = {}
+
+    for section, text in resume_sections.items():
+        if text.strip():
+            scores[section] = tfidf_similarity(text, job_text)
+        else:
+            scores[section] = 0.0
+
+    return scores
+
