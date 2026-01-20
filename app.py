@@ -71,6 +71,18 @@ if st.button("🔍 Screen Resume"):
     )
 
     final_score = final_ats_score(skill_score, tfidf_score)
+    
+from main import split_resume_sections, section_wise_scores
+
+sections = split_resume_sections(resume_text)
+section_scores = section_wise_scores(sections, job_text)
+
+st.subheader("📂 Section-wise ATS Breakdown")
+
+for section, score in section_scores.items():
+    st.write(f"**{section.capitalize()}**")
+    st.progress(score / 100)
+    st.write(f"{score}%")
 
     # =========================
     # RESULTS
@@ -116,4 +128,5 @@ if st.button("🔍 Screen Resume"):
         st.warning("🟡 Consider After Review")
     else:
         st.error("🔴 Reject / Needs Rewrite")
+
 
