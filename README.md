@@ -37,3 +37,9 @@ This project focuses on **interpretability**, showing *why* a resume is accepted
 - ML-based skill extraction (NER)
 - Section-wise ATS scoring
 - Resume keyword optimization
+
+##Section	How it should be scored
+- Skills	       Rule-based skill matching
+- Experience	   TF-IDF similarity
+- Projects	     TF-IDF similarity
+- Education    	 Keyword presence (light TF-IDF)
