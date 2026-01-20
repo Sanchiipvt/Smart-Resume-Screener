@@ -72,6 +72,45 @@ if st.button("🔍 Screen Resume"):
 
     final_score = final_ats_score(skill_score, tfidf_score)
     
+# =========================
+# OVERALL ATS RESULTS
+# =========================
+st.subheader("📊 ATS Results")
+
+c1, c2, c3 = st.columns(3)
+c1.metric("Skill Match", f"{skill_score}%")
+c2.metric("TF-IDF Match", f"{tfidf_score}%")
+c3.metric("⭐ Final ATS", f"{final_score}%")
+
+st.subheader("🧠 Skill Coverage")
+if job_skills:
+    st.progress(len(matched) / len(job_skills))
+    st.write(f"Matched: {len(matched)} / {len(job_skills)}")
+    st.write(f"Missing: {len(missing)} / {len(job_skills)}")
+
+st.subheader("✅ Matched Skills")
+st.write(", ".join(sorted(matched)) if matched else "None")
+
+st.subheader("❌ Missing Skills")
+st.write(", ".join(sorted(missing)) if missing else "None")
+
+st.subheader("💡 Resume Improvement Suggestions")
+suggestions = generate_skill_suggestions(missing)
+if suggestions:
+    for s in suggestions:
+        st.write("•", s)
+else:
+    st.success("Your resume already aligns well with the job role.")
+
+st.subheader("📌 Recruiter Verdict")
+if final_score >= 85:
+    st.success("🟢 Shortlist Immediately")
+elif final_score >= 70:
+    st.warning("🟡 Consider After Review")
+else:
+    st.error("🔴 Reject / Needs Rewrite")
+
+    
 from main import split_resume_sections, section_wise_scores
 
 sections = split_resume_sections(resume_text)
@@ -84,49 +123,5 @@ for section, score in section_scores.items():
     st.progress(score / 100)
     st.write(f"{score}%")
 
-    # =========================
-    # RESULTS
-    # =========================
-    st.subheader("📊 ATS Results")
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Skill Match", f"{skill_score}%")
-    c2.metric("TF-IDF Match", f"{tfidf_score}%")
-    c3.metric("⭐ Final ATS", f"{final_score}%")
-
-    st.subheader("🧠 Skill Coverage")
-    if job_skills:
-        st.progress(len(matched) / len(job_skills))
-        st.write(f"Matched: {len(matched)} / {len(job_skills)}")
-        st.write(f"Missing: {len(missing)} / {len(job_skills)}")
-
-    st.subheader("✅ Matched Skills")
-    st.write(", ".join(sorted(matched)) if matched else "None")
-
-    st.subheader("❌ Missing Skills")
-    st.write(", ".join(sorted(missing)) if missing else "None")
-
-    # =========================
-    # SUGGESTIONS
-    # =========================
-    st.subheader("💡 Resume Improvement Suggestions")
-    suggestions = generate_skill_suggestions(missing)
-
-    if suggestions:
-        for s in suggestions:
-            st.write("•", s)
-    else:
-        st.success("Your resume already aligns well with the job role.")
-
-    # =========================
-    # RECRUITER VERDICT
-    # =========================
-    st.subheader("📌 Recruiter Verdict")
-    if final_score >= 85:
-        st.success("🟢 Shortlist Immediately")
-    elif final_score >= 70:
-        st.warning("🟡 Consider After Review")
-    else:
-        st.error("🔴 Reject / Needs Rewrite")
 
 
